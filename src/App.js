@@ -1,0 +1,33 @@
+import React from "react";
+import AppRoutes from "./routes/AppRoutes";
+import "./App.css";
+
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
+function App() {
+
+    return (
+
+        <>
+
+            <AppRoutes />
+
+            <ToastContainer
+                position="top-right"
+                autoClose={3000}
+                hideProgressBar={false}
+                newestOnTop={true}
+                closeOnClick
+                pauseOnHover
+                draggable
+                theme="colored"
+            />
+
+        </>
+
+    );
+
+}
+
+export default App;
