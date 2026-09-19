@@ -1,70 +1,83 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { FaEye, FaEyeSlash } from "react-icons/fa";
+import api from "../api/AxiosConfig";
 
 function Login() {
 
-    const [email, setEmail] = useState("");
+    const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
 
     const [showPassword, setShowPassword] = useState(false);
 
     const [error, setError] = useState("");
+    const [loading, setLoading] = useState(false);
 
     const navigate = useNavigate();
 
     const { login } = useAuth();
 
-
-    const handleLogin = (e) => {
+    const handleLogin = async (e) => {
 
         e.preventDefault();
 
         setError("");
+        setLoading(true);
 
+        try {
 
-        // ============================================
-        // ADMIN LOGIN
-        // ============================================
+            const response = await api.post(
+                "/auth/login",
+                {
+                    username: username,
+                    password: password
+                }
+            );
 
-        if (
-            email === "admin@gmail.com" &&
-            password === "admin123"
-        ) {
+            const loginData = response.data;
 
-            login("ADMIN");
+            // Save JWT token, username and role
+            login(loginData);
 
-            navigate("/admin");
+            // Navigate according to role
+            if (loginData.role === "ADMIN") {
 
-            return;
+                navigate("/admin");
+
+            } else if (loginData.role === "USER") {
+
+                navigate("/user");
+
+            } else {
+
+                setError("Invalid user role.");
+
+            }
+
+        } catch (error) {
+
+            if (error.response) {
+
+                setError(
+                    error.response.data?.message ||
+                    "Invalid username or password."
+                );
+
+            } else {
+
+                setError(
+                    "Unable to connect to the server."
+                );
+
+            }
+
+        } finally {
+
+            setLoading(false);
+
         }
-
-
-        // ============================================
-        // USER LOGIN
-        // ============================================
-
-        if (
-            email === "user@gmail.com" &&
-            password === "user123"
-        ) {
-
-            login("USER");
-
-            navigate("/user");
-
-            return;
-        }
-
-
-        // ============================================
-        // INVALID LOGIN
-        // ============================================
-
-        setError("Invalid email or password.");
-
     };
-
 
     return (
 
@@ -74,42 +87,26 @@ function Login() {
 
             <div className="login-box">
 
-                <h1>
-                    SRM OD MANAGEMENT
-                </h1>
+                <h1>SRM OD MANAGEMENT</h1>
 
-                <p>
-                    Login to your account
-                </p>
-
+                <p>Login to your account</p>
 
                 <form
                     className="login-form"
                     onSubmit={handleLogin}
                 >
 
-                    {/* EMAIL */}
-
-                    <label>
-                        Email
-                    </label>
+                    <label>Username</label>
 
                     <input
-                        type="email"
-                        placeholder="Enter your email"
-                        value={email}
-                        onChange={(e) =>
-                            setEmail(e.target.value)
-                        }
+                        type="text"
+                        placeholder="Enter your username"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
                         required
                     />
 
-
-                    {/* PASSWORD */}
-
-                    <label>
-                        Password
-                    </label>
+                    <label>Password</label>
 
                     <div className="password-container">
 
@@ -133,14 +130,21 @@ function Login() {
                             onClick={() =>
                                 setShowPassword(!showPassword)
                             }
+                            aria-label={
+                                showPassword
+                                    ? "Hide password"
+                                    : "Show password"
+                            }
                         >
-                            {showPassword ? "🙈" : "👁️"}
+
+                            {showPassword
+                                ? <FaEyeSlash />
+                                : <FaEye />
+                            }
+
                         </button>
 
                     </div>
-
-
-                    {/* ERROR */}
 
                     {error && (
 
@@ -150,24 +154,59 @@ function Login() {
 
                     )}
 
-
-                    {/* LOGIN BUTTON */}
-
                     <button
                         type="submit"
                         className="login-button"
+                        disabled={loading}
                     >
-                        Login
+
+                        {loading
+                            ? "Logging in..."
+                            : "Login"}
+
                     </button>
+
+                    <p>
+
+                        Don't have an account?{" "}
+
+                        <span
+                            onClick={() =>
+                                navigate("/signup")
+                            }
+                            style={{
+                                cursor: "pointer",
+                                textDecoration: "underline"
+                            }}
+                        >
+                            Signup
+                        </span>
+
+                    </p>
+
+                    <p>
+
+                        <span
+                            onClick={() =>
+                                navigate("/forgot-password")
+                            }
+                            style={{
+                                cursor: "pointer",
+                                textDecoration: "underline"
+                            }}
+                        >
+                            Forgot Password?
+                        </span>
+
+                    </p>
 
                 </form>
 
             </div>
 
         </div>
-
     );
-
 }
 
 export default Login;
+

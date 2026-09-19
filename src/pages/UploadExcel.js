@@ -9,12 +9,13 @@ import { useAuth } from "../context/AuthContext";
 function UploadExcel() {
 
     const { logout } = useAuth();
-        const navigate = useNavigate();
-    
-        const handleLogout = () => {
-            logout();
-            navigate("/");
-        };
+    const navigate = useNavigate();
+
+    const handleLogout = () => {
+        logout();
+        navigate("/");
+    };
+
 
     // =========================================================
     // STATES
@@ -715,7 +716,6 @@ function UploadExcel() {
             toast.info(
                 "Approval has been removed."
             );
-
         }
     };
 
@@ -787,60 +787,50 @@ function UploadExcel() {
                             row.Student_name
                         ).trim(),
 
-
                     reg_no:
                         String(
                             row.Reg_no
                         ).trim(),
-
 
                     course:
                         String(
                             row.Course
                         ).trim(),
 
-
                     branch:
                         String(
                             row.Branch
                         ).trim(),
-
 
                     year:
                         Number(
                             row.Year
                         ),
 
-
                     sem:
                         Number(
                             row.Sem
                         ),
-
 
                     sec:
                         String(
                             row.Sec
                         ).trim(),
 
-
                     event_name:
                         String(
                             row.Event_name
                         ).trim(),
-
 
                     event_date:
                         formatExcelDate(
                             row.Event_date
                         ),
 
-
                     start_time:
                         formatExcelTime(
                             row.Start_time
                         ),
-
 
                     end_time:
                         formatExcelTime(
@@ -899,8 +889,6 @@ function UploadExcel() {
             setUploading(true);
 
 
-            // Toast: Upload started
-
             toast.info(
                 "Uploading data to database..."
             );
@@ -919,13 +907,70 @@ function UploadExcel() {
             );
 
 
-            // -----------------------------------------
-            // SUCCESS
-            // -----------------------------------------
+            // =================================================
+            // DUPLICATE-SKIPPING RESPONSE
+            // =================================================
 
-            toast.success(
-                `${students.length} OD records uploaded successfully to the database.`
-            );
+            /*
+             * Expected backend response:
+             *
+             * {
+             *     inserted: 95,
+             *     skipped: 5
+             * }
+             *
+             * If the backend still returns only a List,
+             * the fallback below will show the total
+             * number of records returned.
+             */
+
+            const result =
+                response.data;
+
+
+            if (
+                result &&
+                !Array.isArray(result) &&
+                typeof result.inserted === "number"
+            ) {
+
+                const inserted =
+                    result.inserted;
+
+                const skipped =
+                    result.skipped || 0;
+
+
+                if (skipped > 0) {
+
+                    toast.success(
+                        `${inserted} OD records uploaded successfully. ${skipped} duplicate records skipped.`
+                    );
+
+                } else {
+
+                    toast.success(
+                        `${inserted} OD records uploaded successfully to the database.`
+                    );
+                }
+
+            } else {
+
+                /*
+                 * Fallback for the current backend
+                 * if it still returns List<Student>.
+                 */
+
+                const uploadedCount =
+                    Array.isArray(result)
+                        ? result.length
+                        : students.length;
+
+
+                toast.success(
+                    `${uploadedCount} OD records uploaded successfully to the database.`
+                );
+            }
 
 
             console.log(
@@ -966,6 +1011,7 @@ function UploadExcel() {
 
 
             toast.error(
+                error.response?.data?.message ||
                 "Failed to upload data to the database."
             );
 
@@ -997,7 +1043,6 @@ function UploadExcel() {
         toast.info(
             "Upload form has been reset."
         );
-
     };
 
 
@@ -1007,26 +1052,28 @@ function UploadExcel() {
 
     return (
 
-
         <div className="upload-page">
-            {/*===============Logout=====================*/}
+
+            {/*=============== Logout =====================*/}
+
             <nav className="navbar">
 
-                <h2>OD Management System</h2>
+                <h2>
+                    OD Management System
+                </h2>
 
                 <button onClick={handleLogout}>
                     Logout
                 </button>
 
             </nav>
-            
+
 
             {/* ================= MAIN CONTAINER ================= */}
 
             <div className="upload-container">
 
                 <div className="upload-box">
-
 
                     <h1>
                         Upload OD Excel File
@@ -1042,9 +1089,7 @@ function UploadExcel() {
                     {/* ================= FILE INPUT ================= */}
 
                     <label className="file-label">
-
                         Select Excel File
-
                     </label>
 
 
@@ -1287,7 +1332,6 @@ function UploadExcel() {
 
                     <div className="button-container">
 
-
                         <button
                             type="button"
                             className="reset-button"
@@ -1325,18 +1369,15 @@ function UploadExcel() {
 
                         </button>
 
-
                     </div>
-
 
                 </div>
 
             </div>
 
         </div>
-
     );
-
 }
 
 export default UploadExcel;
+

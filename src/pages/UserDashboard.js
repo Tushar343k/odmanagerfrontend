@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { toast } from "react-toastify";
 import api from "../api/AxiosConfig";
 import * as XLSX from "xlsx";
 
 function UserDashboard() {
 
-    const { logout } = useAuth();
+    const { logout, role } = useAuth();
     const navigate = useNavigate();
 
     // ==========================================
@@ -52,9 +53,7 @@ function UserDashboard() {
     // ==========================================
 
     const [page, setPage] = useState(0);
-
     const [totalPages, setTotalPages] = useState(0);
-
     const [totalRecords, setTotalRecords] = useState(0);
 
     const pageSize = 5;
@@ -69,6 +68,102 @@ function UserDashboard() {
         logout();
 
         navigate("/");
+
+    };
+
+
+    // ==========================================
+    // DELETE ALL OD RECORDS - ADMIN ONLY
+    // ==========================================
+
+    const handleDeleteAll = async () => {
+
+        const confirmDelete = window.confirm(
+            "Are you sure you want to delete ALL OD records?\n\nThis action cannot be undone."
+        );
+
+        if (!confirmDelete) {
+            return;
+        }
+
+        try {
+
+            setLoading(true);
+            setError("");
+
+            await api.delete("/students/delete-all");
+
+            toast.success(
+                "All OD records deleted successfully."
+            );
+
+            setStudents([]);
+            setTotalRecords(0);
+            setTotalPages(0);
+            setPage(0);
+
+            // Clear filters
+
+            setCourse("");
+            setBranch("");
+            setYear("");
+            setSec("");
+            setEventName("");
+            setEventDate("");
+            setStartTime("");
+            setEndTime("");
+
+            // Clear dropdowns
+
+            setBranches([]);
+            setYears([]);
+            setSections([]);
+            setEvents([]);
+            setEventDates([]);
+            setStartTimes([]);
+            setEndTimes([]);
+
+            // Reload courses
+
+            loadCourses();
+
+        } catch (error) {
+
+            console.error(
+                "Delete all records failed:",
+                error
+            );
+
+            if (error.response) {
+
+                if (error.response.status === 403) {
+
+                    toast.error(
+                        "You are not authorized to delete records."
+                    );
+
+                } else {
+
+                    toast.error(
+                        error.response.data?.message ||
+                        "Unable to delete all OD records."
+                    );
+
+                }
+
+            } else {
+
+                toast.error(
+                    "Unable to connect to the server."
+                );
+
+            }
+
+        } finally {
+
+            setLoading(false);
+
+        }
     };
 
 
@@ -97,9 +192,6 @@ function UserDashboard() {
                 page: selectedPage,
                 size: pageSize
             };
-
-
-            // Add filters only when selected
 
             if (selectedCourse) {
                 params.course = selectedCourse;
@@ -133,7 +225,6 @@ function UserDashboard() {
                 params.endTime = selectedEndTime;
             }
 
-
             const response = await api.get(
                 "/students/page",
                 {
@@ -141,23 +232,14 @@ function UserDashboard() {
                 }
             );
 
-
             console.log(
                 "Student Page Response:",
                 response.data
             );
 
-
-            // ==========================================
-            // SET STUDENT DATA
-            // ==========================================
-
-            setStudents(response.data.content || []);
-
-
-            // ==========================================
-            // SET PAGINATION DATA
-            // ==========================================
+            setStudents(
+                response.data.content || []
+            );
 
             setTotalPages(
                 response.data.totalPages || 0
@@ -183,21 +265,19 @@ function UserDashboard() {
             );
 
             setStudents([]);
-
             setTotalPages(0);
-
             setTotalRecords(0);
 
         } finally {
 
             setLoading(false);
+
         }
     };
 
 
     // ==========================================
-    // LOAD COURSES + FIRST 100 RECORDS
-    // WHEN DASHBOARD OPENS
+    // LOAD COURSES + FIRST PAGE
     // ==========================================
 
     useEffect(() => {
@@ -239,6 +319,7 @@ function UserDashboard() {
                 "Error loading courses:",
                 err
             );
+
         }
     };
 
@@ -251,13 +332,7 @@ function UserDashboard() {
 
         const selectedCourse = e.target.value;
 
-
-        // Set selected course
-
         setCourse(selectedCourse);
-
-
-        // Reset all lower filters
 
         setBranch("");
         setYear("");
@@ -267,9 +342,6 @@ function UserDashboard() {
         setStartTime("");
         setEndTime("");
 
-
-        // Clear lower dropdowns
-
         setBranches([]);
         setYears([]);
         setSections([]);
@@ -278,10 +350,7 @@ function UserDashboard() {
         setStartTimes([]);
         setEndTimes([]);
 
-
         if (!selectedCourse) {
-
-            // Load all records
 
             getStudents(
                 "",
@@ -298,10 +367,7 @@ function UserDashboard() {
             return;
         }
 
-
         try {
-
-            // Load branches for selected course
 
             const response = await api.get(
                 "/students/branches",
@@ -314,21 +380,17 @@ function UserDashboard() {
 
             setBranches(response.data);
 
-
         } catch (err) {
 
             console.error(
                 "Error loading branches:",
                 err
             );
+
         }
-
-
-        // Load filtered records
 
         getStudents(
             selectedCourse,
-            "",
             "",
             "",
             "",
@@ -348,11 +410,7 @@ function UserDashboard() {
 
         const selectedBranch = e.target.value;
 
-
         setBranch(selectedBranch);
-
-
-        // Reset lower filters
 
         setYear("");
         setSec("");
@@ -361,14 +419,12 @@ function UserDashboard() {
         setStartTime("");
         setEndTime("");
 
-
         setYears([]);
         setSections([]);
         setEvents([]);
         setEventDates([]);
         setStartTimes([]);
         setEndTimes([]);
-
 
         if (!selectedBranch) {
 
@@ -387,7 +443,6 @@ function UserDashboard() {
             return;
         }
 
-
         try {
 
             const response = await api.get(
@@ -402,15 +457,14 @@ function UserDashboard() {
 
             setYears(response.data);
 
-
         } catch (err) {
 
             console.error(
                 "Error loading years:",
                 err
             );
-        }
 
+        }
 
         getStudents(
             course,
@@ -434,11 +488,7 @@ function UserDashboard() {
 
         const selectedYear = e.target.value;
 
-
         setYear(selectedYear);
-
-
-        // Reset lower filters
 
         setSec("");
         setEventName("");
@@ -446,13 +496,11 @@ function UserDashboard() {
         setStartTime("");
         setEndTime("");
 
-
         setSections([]);
         setEvents([]);
         setEventDates([]);
         setStartTimes([]);
         setEndTimes([]);
-
 
         if (!selectedYear) {
 
@@ -471,7 +519,6 @@ function UserDashboard() {
             return;
         }
 
-
         try {
 
             const response = await api.get(
@@ -487,21 +534,19 @@ function UserDashboard() {
 
             setSections(response.data);
 
-
         } catch (err) {
 
             console.error(
                 "Error loading sections:",
                 err
             );
-        }
 
+        }
 
         getStudents(
             course,
             branch,
             selectedYear,
-            "",
             "",
             "",
             "",
@@ -519,23 +564,17 @@ function UserDashboard() {
 
         const selectedSec = e.target.value;
 
-
         setSec(selectedSec);
-
-
-        // Reset lower filters
 
         setEventName("");
         setEventDate("");
         setStartTime("");
         setEndTime("");
 
-
         setEvents([]);
         setEventDates([]);
         setStartTimes([]);
         setEndTimes([]);
-
 
         if (!selectedSec) {
 
@@ -554,7 +593,6 @@ function UserDashboard() {
             return;
         }
 
-
         try {
 
             const response = await api.get(
@@ -571,15 +609,14 @@ function UserDashboard() {
 
             setEvents(response.data);
 
-
         } catch (err) {
 
             console.error(
                 "Error loading events:",
                 err
             );
-        }
 
+        }
 
         getStudents(
             course,
@@ -603,21 +640,15 @@ function UserDashboard() {
 
         const selectedEvent = e.target.value;
 
-
         setEventName(selectedEvent);
-
-
-        // Reset lower filters
 
         setEventDate("");
         setStartTime("");
         setEndTime("");
 
-
         setEventDates([]);
         setStartTimes([]);
         setEndTimes([]);
-
 
         if (!selectedEvent) {
 
@@ -636,7 +667,6 @@ function UserDashboard() {
             return;
         }
 
-
         try {
 
             const response = await api.get(
@@ -654,15 +684,14 @@ function UserDashboard() {
 
             setEventDates(response.data);
 
-
         } catch (err) {
 
             console.error(
                 "Error loading event dates:",
                 err
             );
-        }
 
+        }
 
         getStudents(
             course,
@@ -686,19 +715,13 @@ function UserDashboard() {
 
         const selectedDate = e.target.value;
 
-
         setEventDate(selectedDate);
-
-
-        // Reset lower filters
 
         setStartTime("");
         setEndTime("");
 
-
         setStartTimes([]);
         setEndTimes([]);
-
 
         if (!selectedDate) {
 
@@ -716,7 +739,6 @@ function UserDashboard() {
 
             return;
         }
-
 
         try {
 
@@ -736,15 +758,14 @@ function UserDashboard() {
 
             setStartTimes(response.data);
 
-
         } catch (err) {
 
             console.error(
                 "Error loading start times:",
                 err
             );
-        }
 
+        }
 
         getStudents(
             course,
@@ -768,16 +789,10 @@ function UserDashboard() {
 
         const selectedStartTime = e.target.value;
 
-
         setStartTime(selectedStartTime);
 
-
-        // Reset end time
-
         setEndTime("");
-
         setEndTimes([]);
-
 
         if (!selectedStartTime) {
 
@@ -795,7 +810,6 @@ function UserDashboard() {
 
             return;
         }
-
 
         try {
 
@@ -816,15 +830,14 @@ function UserDashboard() {
 
             setEndTimes(response.data);
 
-
         } catch (err) {
 
             console.error(
                 "Error loading end times:",
                 err
             );
-        }
 
+        }
 
         getStudents(
             course,
@@ -848,9 +861,7 @@ function UserDashboard() {
 
         const selectedEndTime = e.target.value;
 
-
         setEndTime(selectedEndTime);
-
 
         getStudents(
             course,
@@ -885,6 +896,7 @@ function UserDashboard() {
                 endTime,
                 page + 1
             );
+
         }
     };
 
@@ -908,6 +920,7 @@ function UserDashboard() {
                 endTime,
                 page - 1
             );
+
         }
     };
 
@@ -927,7 +940,6 @@ function UserDashboard() {
         setStartTime("");
         setEndTime("");
 
-
         setBranches([]);
         setYears([]);
         setSections([]);
@@ -935,9 +947,6 @@ function UserDashboard() {
         setEventDates([]);
         setStartTimes([]);
         setEndTimes([]);
-
-
-        // Load first 100 records
 
         getStudents(
             "",
@@ -951,12 +960,16 @@ function UserDashboard() {
             0
         );
     };
+
+
     // ==========================================
-    // Download Excel
+    // DOWNLOAD EXCEL
     // ==========================================
 
     const downloadExcel = async () => {
+
         try {
+
             const params = {};
 
             if (course) params.course = course;
@@ -968,33 +981,46 @@ function UserDashboard() {
             if (startTime) params.startTime = startTime;
             if (endTime) params.endTime = endTime;
 
-            const response = await api.get("/students/download", {
-                params: params
-            });
+            const response = await api.get(
+                "/students/download",
+                {
+                    params: params
+                }
+            );
 
             if (response.data.length === 0) {
-                alert("No records available to download.");
+
+                toast.info(
+                    "No records available to download."
+                );
+
                 return;
             }
 
-            const excelData = response.data.map((student, index) => ({
-                ID: index + 1,
-                Student_Name: student.studentName,
-                Reg_No: student.reg_no,
-                Course: student.course,
-                Branch: student.branch,
-                Year: student.year,
-                Sem: student.sem,
-                Sec: student.sec,
-                Event_Name: student.event_name,
-                Event_Date: student.event_date,
-                Start_Time: student.start_time,
-                End_Time: student.end_time
-            }));
+            const excelData = response.data.map(
+                (student, index) => ({
 
-            const worksheet = XLSX.utils.json_to_sheet(excelData);
+                    ID: index + 1,
+                    Student_Name: student.studentName,
+                    Reg_No: student.reg_no,
+                    Course: student.course,
+                    Branch: student.branch,
+                    Year: student.year,
+                    Sem: student.sem,
+                    Sec: student.sec,
+                    Event_Name: student.event_name,
+                    Event_Date: student.event_date,
+                    Start_Time: student.start_time,
+                    End_Time: student.end_time
 
-            const workbook = XLSX.utils.book_new();
+                })
+            );
+
+            const worksheet =
+                XLSX.utils.json_to_sheet(excelData);
+
+            const workbook =
+                XLSX.utils.book_new();
 
             XLSX.utils.book_append_sheet(
                 workbook,
@@ -1007,11 +1033,24 @@ function UserDashboard() {
                 "OD_Records.xlsx"
             );
 
+            toast.success(
+                "OD records downloaded successfully."
+            );
+
         } catch (error) {
-            console.error("Download failed:", error);
-            alert("Unable to download records.");
+
+            console.error(
+                "Download failed:",
+                error
+            );
+
+            toast.error(
+                "Unable to download records."
+            );
+
         }
     };
+
 
     // ==========================================
     // FORMAT DATE
@@ -1024,6 +1063,7 @@ function UserDashboard() {
         }
 
         return date;
+
     };
 
 
@@ -1038,6 +1078,7 @@ function UserDashboard() {
         }
 
         return time;
+
     };
 
 
@@ -1049,9 +1090,7 @@ function UserDashboard() {
 
         <div>
 
-            {/* =====================================
-                NAVBAR
-            ====================================== */}
+            {/* NAVBAR */}
 
             <nav className="navbar">
 
@@ -1066,9 +1105,7 @@ function UserDashboard() {
             </nav>
 
 
-            {/* =====================================
-                DASHBOARD
-            ====================================== */}
+            {/* DASHBOARD */}
 
             <div className="user-dashboard-container">
 
@@ -1081,9 +1118,7 @@ function UserDashboard() {
                 </p>
 
 
-                {/* =================================
-                    FILTER SECTION
-                ================================== */}
+                {/* FILTER SECTION */}
 
                 <div className="filter-container">
 
@@ -1276,9 +1311,7 @@ function UserDashboard() {
 
                         <select
                             value={eventDate}
-                            onChange={
-                                handleEventDateChange
-                            }
+                            onChange={handleEventDateChange}
                             disabled={!eventName}
                         >
 
@@ -1314,9 +1347,7 @@ function UserDashboard() {
 
                         <select
                             value={startTime}
-                            onChange={
-                                handleStartTimeChange
-                            }
+                            onChange={handleStartTimeChange}
                             disabled={!eventDate}
                         >
 
@@ -1380,22 +1411,6 @@ function UserDashboard() {
 
                     {/* RESET */}
 
-                    {/* <div className="filter-button">
-
-                        <button
-                            onClick={handleReset}
-                        >
-                            Reset
-                        </button>
-
-                    </div> */}
-
-                    {/* Download Excel */}
-                    {/* <div>
-                    <button onClick={downloadExcel} className="download-button">
-                        Download Excel
-                    </button>
-                    </div>   */}
                     <div className="filter-group">
 
                         <button
@@ -1406,22 +1421,43 @@ function UserDashboard() {
                         </button>
 
                     </div>
+
+
+                    {/* DOWNLOAD */}
+
                     <div className="filter-group">
+
                         <button
                             className="filter-button"
                             onClick={downloadExcel}
                         >
                             Download Excel
                         </button>
+
                     </div>
 
+
+                    {/* DELETE ALL - ADMIN ONLY */}
+
+                    {role === "ADMIN" && (
+
+                        <div className="filter-group">
+
+                            <button
+                                className="filter-button"
+                                onClick={handleDeleteAll}
+                            >
+                                Delete All Records
+                            </button>
+
+                        </div>
+
+                    )}
 
                 </div>
 
 
-                {/* =================================
-                    RECORD INFORMATION
-                ================================== */}
+                {/* RECORD INFORMATION */}
 
                 <div className="record-info">
 
@@ -1436,9 +1472,7 @@ function UserDashboard() {
                 </div>
 
 
-                {/* =================================
-                    LOADING
-                ================================== */}
+                {/* LOADING */}
 
                 {loading && (
 
@@ -1449,9 +1483,7 @@ function UserDashboard() {
                 )}
 
 
-                {/* =================================
-                    ERROR
-                ================================== */}
+                {/* ERROR */}
 
                 {error && (
 
@@ -1462,154 +1494,116 @@ function UserDashboard() {
                 )}
 
 
-                {/* =================================
-                    TABLE
-                ================================== */}
+                {/* TABLE */}
 
-                {!loading && students.length > 0 && (
+                {!loading &&
+                    students.length > 0 && (
 
-                    <div className="table-wrapper">
+                        <div className="table-wrapper">
 
-                        <table>
+                            <table>
 
-                            <thead>
+                                <thead>
 
-                                <tr>
+                                    <tr>
 
-                                    <th>
-                                        ID
-                                    </th>
+                                        <th>ID</th>
+                                        <th>Student Name</th>
+                                        <th>Registration No.</th>
+                                        <th>Course</th>
+                                        <th>Branch</th>
+                                        <th>Year</th>
+                                        <th>Sem</th>
+                                        <th>Sec</th>
+                                        <th>Event Name</th>
+                                        <th>Event Date</th>
+                                        <th>Start Time</th>
+                                        <th>End Time</th>
 
-                                    <th>
-                                        Student Name
-                                    </th>
+                                    </tr>
 
-                                    <th>
-                                        Registration No.
-                                    </th>
-
-                                    <th>
-                                        Course
-                                    </th>
-
-                                    <th>
-                                        Branch
-                                    </th>
-
-                                    <th>
-                                        Year
-                                    </th>
-
-                                    <th>
-                                        Sem
-                                    </th>
-
-                                    <th>
-                                        Sec
-                                    </th>
-
-                                    <th>
-                                        Event Name
-                                    </th>
-
-                                    <th>
-                                        Event Date
-                                    </th>
-
-                                    <th>
-                                        Start Time
-                                    </th>
-
-                                    <th>
-                                        End Time
-                                    </th>
-
-                                </tr>
-
-                            </thead>
+                                </thead>
 
 
-                            <tbody>
+                                <tbody>
 
-                                {students.map(
-                                    (student, index) => (
+                                    {students.map(
+                                        (student, index) => (
 
-                                        <tr
-                                            key={student.id}
-                                        >
+                                            <tr
+                                                key={student.id}
+                                            >
 
-                                            <td>
-                                                {page * 5 + index + 1}
-                                            </td>
+                                                <td>
+                                                    {page * pageSize +
+                                                        index + 1}
+                                                </td>
+
+                                                <td>
+                                                    {student.studentName}
+                                                </td>
+
+                                                <td>
+                                                    {student.reg_no}
+                                                </td>
+
+                                                <td>
+                                                    {student.course}
+                                                </td>
+
+                                                <td>
+                                                    {student.branch}
+                                                </td>
+
+                                                <td>
+                                                    {student.year}
+                                                </td>
+
+                                                <td>
+                                                    {student.sem}
+                                                </td>
+
+                                                <td>
+                                                    {student.sec}
+                                                </td>
+
+                                                <td>
+                                                    {student.event_name}
+                                                </td>
+
+                                                <td>
+                                                    {formatDate(
+                                                        student.event_date
+                                                    )}
+                                                </td>
+
+                                                <td>
+                                                    {formatTime(
+                                                        student.start_time
+                                                    )}
+                                                </td>
+
+                                                <td>
+                                                    {formatTime(
+                                                        student.end_time
+                                                    )}
+                                                </td>
+
+                                            </tr>
+
+                                        )
+                                    )}
+
+                                </tbody>
+
+                            </table>
+
+                        </div>
+
+                    )}
 
 
-                                            <td>
-                                                {student.studentName}
-                                            </td>
-
-                                            <td>
-                                                {student.reg_no}
-                                            </td>
-
-                                            <td>
-                                                {student.course}
-                                            </td>
-
-                                            <td>
-                                                {student.branch}
-                                            </td>
-
-                                            <td>
-                                                {student.year}
-                                            </td>
-
-                                            <td>
-                                                {student.sem}
-                                            </td>
-
-                                            <td>
-                                                {student.sec}
-                                            </td>
-
-                                            <td>
-                                                {student.event_name}
-                                            </td>
-
-                                            <td>
-                                                {formatDate(
-                                                    student.event_date
-                                                )}
-                                            </td>
-
-                                            <td>
-                                                {formatTime(
-                                                    student.start_time
-                                                )}
-                                            </td>
-
-                                            <td>
-                                                {formatTime(
-                                                    student.end_time
-                                                )}
-                                            </td>
-
-                                        </tr>
-
-                                    )
-                                )}
-
-                            </tbody>
-
-                        </table>
-
-                    </div>
-
-                )}
-
-
-                {/* =================================
-                    NO RECORDS
-                ================================== */}
+                {/* NO RECORDS */}
 
                 {!loading &&
                     students.length === 0 &&
@@ -1622,9 +1616,7 @@ function UserDashboard() {
                     )}
 
 
-                {/* =================================
-                    PAGINATION
-                ================================== */}
+                {/* PAGINATION */}
 
                 {totalRecords > 0 && (
 
@@ -1637,7 +1629,6 @@ function UserDashboard() {
                             Previous
                         </button>
 
-
                         <span>
 
                             Page {page + 1}
@@ -1647,7 +1638,6 @@ function UserDashboard() {
                             {totalPages}
 
                         </span>
-
 
                         <button
                             onClick={handleNextPage}
@@ -1669,3 +1659,4 @@ function UserDashboard() {
 }
 
 export default UserDashboard;
+
